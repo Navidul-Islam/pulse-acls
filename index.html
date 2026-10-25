@@ -4,7 +4,7 @@
 </style></head><body><main class="wrap">
 <header class="top"><div class="brand"><div class="mark">+</div><div><strong>PULSE <span style="color:var(--mint)">ACLS</span></strong><small>ADVANCED LIFE SUPPORT · STUDY LAB</small></div></div><span class="tag">ADULT ACLS</span></header>
 <section class="hero"><div class="eyebrow">TRAIN WITH PURPOSE</div><h1>Know the algorithm.<br><span>Own the emergency.</span></h1><p>A focused workspace for rapid recall, topic-based revision and progress tracking.</p></section>
-<section class="panel account"><h2>Cloud progress sync</h2><p class="muted" style="font-size:13px;line-height:1.5;margin:0">Create a sync code on your first device, then enter that same code on your other devices. No email or account required. Keep the code private.</p><div class="authrow" id="syncSetup"><button class="btn primary" id="createSync">Create sync code</button><input id="syncCodeInput" type="text" autocomplete="off" placeholder="Paste your sync code on this device" aria-label="Sync code"><button class="btn" id="joinSync">Connect with code</button></div><div class="authrow hidden" id="syncConnected"><input id="syncCodeDisplay" type="text" readonly aria-label="Your sync code"><button class="btn" id="copySync">Copy code</button><button class="btn" id="syncNow">Sync now</button><button class="btn" id="disconnectSync">Disconnect</button></div><div class="authstatus" id="authStatus" role="status" aria-live="polite">Not connected. Progress is saved on this device only.</div></section>
+<section class="panel account"><h2>Cloud progress sync</h2><p class="muted" style="font-size:13px;line-height:1.5;margin:0">Create a 4-digit PIN on your first device, then enter it on your other devices. No email or account required. Keep your PIN private.</p><div class="authrow" id="syncSetup"><button class="btn primary" id="createSync">Create sync code</button><input id="syncCodeInput" type="text" autocomplete="off" placeholder="Enter 4-digit PIN" aria-label="4-digit sync PIN" inputmode="numeric" maxlength="4"><button class="btn" id="joinSync">Connect with code</button></div><div class="authrow hidden" id="syncConnected"><input id="syncCodeDisplay" type="text" readonly aria-label="Your sync code"><button class="btn" id="copySync">Copy code</button><button class="btn" id="syncNow">Sync now</button><button class="btn" id="disconnectSync">Disconnect</button></div><div class="authstatus" id="authStatus" role="status" aria-live="polite">Not connected. Progress is saved on this device only.</div></section>
 <div class="stats"><div class="panel stat"><label>Total cards</label><strong id="total">50</strong><label>Full revision deck</label></div><div class="panel stat"><label>Known</label><strong id="known" class="success">0</strong><label>Rated known</label></div><div class="panel stat"><label>To review</label><strong id="remaining">50</strong><label>Unrated or missed</label></div></div>
 <nav class="tabs"><button class="active" data-page="study">Study</button><button data-page="topics">Topics</button><button data-page="progress">Progress</button></nav>
 <section id="study"><div class="sectionhead"><div><h2>Revision session</h2><p id="sessionLabel">Core algorithms · Card 1 of 50</p></div><span class="pill">Recall mode</span></div><div class="meter"><span id="bar"></span></div><article class="flash" id="flash" role="button" tabindex="0" aria-label="Reveal flashcard answer"><div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" id="category">BLS & CPR</span><span class="muted" id="side" style="font-size:11px">QUESTION</span></div><div><div class="question" id="question"></div><div class="answer hidden" id="answer"></div></div><div class="hint" id="hint">TAP CARD TO REVEAL ANSWER ↗</div></article><div class="controls"><button class="btn" id="missed">↻ Review again</button><button class="btn primary" id="got">✓ I knew it</button></div><div class="subcontrols"><button id="prev">← Previous</button><button id="shuffle">Shuffle</button><button id="next">Next →</button></div><p class="note">Progress is saved locally and syncs to your private code when connected. Use the same code on each device.</p></section>
@@ -26,10 +26,30 @@ let syncCode=localStorage.getItem('pulse-acls-sync-code')||'', saveTimer=null, c
 function setAuthStatus(message,kind=''){const el=$('authStatus');el.textContent=message;el.className='authstatus'+(kind?' '+kind:'')}
 function showSyncState(){if(syncCode){$('syncSetup').classList.add('hidden');$('syncConnected').classList.remove('hidden');$('syncCodeDisplay').value=syncCode}else{$('syncSetup').classList.remove('hidden');$('syncConnected').classList.add('hidden')}}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(ratings))}catch(e){} if(syncCode){clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloudProgress(),500)}}
-function makeSyncCode(){const bytes=new Uint8Array(24);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
+function makeSyncCode(){return String(Math.floor(1000+Math.random()*9000))}
 async function saveCloudProgress(){if(!syncCode||cloudBusy)return;cloudBusy=true;setAuthStatus('Syncing progress…');try{const {error}=await supabaseClient.rpc('save_acls_progress',{p_sync_code:syncCode,p_ratings:ratings});if(error)throw error;setAuthStatus('Sync connected · progress synced','success')}catch(e){setAuthStatus('Sync failed: '+(e.message||'check the database setup instructions'),'error')}finally{cloudBusy=false}}
-async function connectSync(code,create=false){if(!code||code.length<32){setAuthStatus('Enter a valid sync code, or create one on your first device.','error');return}syncCode=code;setAuthStatus('Connecting and loading progress…');try{const {data,error}=await supabaseClient.rpc('get_acls_progress',{p_sync_code:syncCode});if(error)throw error;if(data&&typeof data==='object'){ratings={...ratings,...data};try{localStorage.setItem(KEY,JSON.stringify(ratings))}catch(e){}}localStorage.setItem('pulse-acls-sync-code',syncCode);showSyncState();updateStats();render();await saveCloudProgress()}catch(e){syncCode='';setAuthStatus('Connection failed: '+(e.message||'run the SQL setup in README.md'),'error')}}
-$('createSync').onclick=()=>{if(confirm('Create a new private sync code for this study progress? Keep it somewhere safe.'))connectSync(makeSyncCode(),true)};
+async function connectSync(code,create=false){if(!/^\d{4}$/.test(code)){setAuthStatus('Enter a 4-digit PIN.','error');return}
+setAuthStatus(create?'Creating your PIN…':'Connecting and loading progress…');
+try{
+ if(create){
+   let created=false;
+   for(let attempt=0;attempt<8&&!created;attempt++){
+     const {data,error}=await supabaseClient.rpc('create_acls_progress',{p_sync_code:code,p_ratings:ratings});
+     if(error)throw error;
+     created=data===true;
+     if(!created)code=makeSyncCode();
+   }
+   if(!created)throw new Error('Could not create a unique PIN. Please try again.');
+ } else {
+   const {data,error}=await supabaseClient.rpc('get_acls_progress',{p_sync_code:code});
+   if(error)throw error;
+   if(data===null){throw new Error('That PIN was not found. Create it on your first device first.')}
+   if(data&&typeof data==='object'){ratings={...ratings,...data};try{localStorage.setItem(KEY,JSON.stringify(ratings))}catch(e){}}
+ }
+ syncCode=code;localStorage.setItem('pulse-acls-sync-code',syncCode);showSyncState();updateStats();render();
+ if(create){setAuthStatus('PIN created. Save it and enter it on your other devices.','success')}else{setAuthStatus('Connected. Syncing progress…');await saveCloudProgress()}
+}catch(e){syncCode='';setAuthStatus('Connection failed: '+(e.message||'run the SQL setup instructions'),'error')}}
+$('createSync').onclick=()=>{if(confirm('Create a 4-digit PIN for syncing this study progress? Keep it private.'))connectSync(makeSyncCode(),true)};
 $('joinSync').onclick=()=>connectSync($('syncCodeInput').value.trim().replace(/\s+/g,''));
 $('syncNow').onclick=saveCloudProgress;
 $('copySync').onclick=()=>{const input=$('syncCodeDisplay');input.select();if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(syncCode).then(()=>setAuthStatus('Sync code copied. Keep it private.','success')).catch(()=>setAuthStatus('Select and copy the code manually.'));else setAuthStatus('Select and copy the code manually.')};
