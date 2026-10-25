@@ -1,6 +1,6 @@
 # PULSE ACLS Study Lab
 
-Responsive ACLS flashcard study app with topic filters, shuffle, missed-card review, local progress, and Supabase account-based cross-device progress sync.
+Responsive ACLS flashcard study app with topic filters, shuffle, missed-card review, local progress, and Supabase account-based cross-device progress sync..
 
 ## Publish updates
 1. Open the existing `pulse-acls` GitHub repository.
