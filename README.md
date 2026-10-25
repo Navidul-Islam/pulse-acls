@@ -1,16 +1,17 @@
-# PULSE ACLS Study Lab
+# PULSE ACLS Study Lab — private sync code
 
-Responsive ACLS flashcard study app with topic filters, shuffle, missed-card review, local progress, and Supabase account-based cross-device progress sync..
+## Enable cloud sync (one-time setup)
 
-## Publish updates
-1. Open the existing `pulse-acls` GitHub repository.
-2. Replace `index.html` with this updated version. Also upload/replace `manifest.json` and `sw.js` if prompted.
-3. Open the GitHub Pages site and sign up or sign in. Use the same account on every device.
+1. In Supabase, open **SQL Editor** and choose **New query**.
+2. Open `SUPABASE_SETUP.sql`, copy all its contents into the SQL editor, and click **Run**. This creates a separate sync table and two RPC functions. The existing `acls_progress` table and its policy are not used by this version.
+3. Upload the updated `index.html`, `manifest.json`, and `sw.js` to the root of your `pulse-acls` GitHub repository and commit the changes. Upload `SUPABASE_SETUP.sql` too if you want to keep it in the repository; it is not needed by the website after setup.
+4. Open the deployed website. On your main device, click **Create sync code** and keep the code somewhere safe.
+5. On each other device, open the same website, paste that exact code into the input, and click **Connect with code**.
 
-## Supabase setup
-The app uses the Supabase project URL and browser-safe publishable key configured in `index.html`. Never put a `service_role` or secret key in client-side code. The `public.acls_progress` table must have `user_id` (uuid primary key), `ratings` (jsonb default `{}`), and `updated_at` (timestamptz default `now()`). Enable RLS and create an `ALL` policy for role `authenticated` with both `USING (auth.uid() = user_id)` and `WITH CHECK (auth.uid() = user_id)`.
+## Important
 
-If Supabase email confirmation is enabled, users must confirm the sign-up email before signing in. Do not store patient information in this study app.
-
-## Clinical disclaimer
-For educational revision only. Verify ACLS algorithms, medication doses, and energy settings against current resuscitation guidance and local protocols before clinical use.
+- No email or password is used. The sync code is a bearer secret: anyone who has it can read or overwrite the ratings associated with it. Do not post it publicly or put it in a public repository.
+- The code is saved in that browser on each connected device. If you clear browser data, you may need to paste the code again.
+- Existing local ratings are merged into the remote ratings when connecting. Keep a copy of your code before changing devices.
+- This sync setup only syncs card ratings, not the current card position or shuffled order.
+- Keep the Supabase publishable key in the website; never use a service-role/secret key in client-side code.
