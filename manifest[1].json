@@ -1,0 +1,10 @@
+{
+  "name": "PULSE",
+  "short_name": "PULSE",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a1220",
+  "theme_color": "#0a1220",
+  "description": "Personal clinical study app",
+  "icons": []
+}
