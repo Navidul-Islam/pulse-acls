@@ -1,10 +1,10 @@
 {
-  "name": "PULSE ACLS Study Lab",
-  "short_name": "PULSE ACLS",
+  "name": "PULSE",
+  "short_name": "PULSE",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#091321",
-  "theme_color": "#091321",
-  "description": "Adult ACLS flashcards and revision workspace",
+  "background_color": "#0a1220",
+  "theme_color": "#0a1220",
+  "description": "Personal clinical study app",
   "icons": []
 }
